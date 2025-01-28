@@ -4,23 +4,35 @@
  * Plugin Name: Composer Generator
  * Description: Create composer.json file from current plugins available on WPackagist.org.
  * Author: Ross Mulcahy
- * Version: 1.1.0
+ * Version: 1.1.1
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ *
+ * This plugin generates a composer.json file for WordPress installations,
+ * making it easier to manage plugins through Composer package manager.
  */
 
-// Prevent direct access
+// Prevent direct access to this file
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin constants
-define('CG_VERSION', '1.1.0');
+// Define plugin constants for easy reference
+define('CG_VERSION', '1.1.1');
 define('CG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CG_PLUGIN_URL', plugin_dir_url(__FILE__));
 
+/**
+ * Main plugin class using singleton pattern
+ * Handles all core functionality of the Composer Generator plugin
+ */
 class ComposerGenerator {
+    /** @var ComposerGenerator|null Singleton instance */
     private static $instance = null;
 
+    /**
+     * Get singleton instance of the plugin
+     * @return ComposerGenerator
+     */
     public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();
@@ -28,11 +40,18 @@ class ComposerGenerator {
         return self::$instance;
     }
 
+    /**
+     * Private constructor to prevent direct creation
+     * Adds necessary WordPress hooks
+     */
     private function __construct() {
         add_action('admin_menu', [$this, 'register_admin_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
     }
 
+    /**
+     * Registers the plugin's admin page under Tools menu
+     */
     public function register_admin_page() {
         add_submenu_page(
             'tools.php',
@@ -44,6 +63,10 @@ class ComposerGenerator {
         );
     }
 
+    /**
+     * Enqueues necessary JavaScript files for the admin page
+     * @param string $hook Current admin page hook
+     */
     public function enqueue_admin_scripts($hook) {
         if ('tools_page_composer-generator' !== $hook) {
             return;
@@ -61,6 +84,10 @@ class ComposerGenerator {
         ]);
     }
 
+    /**
+     * Renders the admin page template
+     * Checks for proper permissions before rendering
+     */
     public function render_admin_page() {
         if (!current_user_can('manage_options')) {
             return;
@@ -68,6 +95,10 @@ class ComposerGenerator {
         require_once CG_PLUGIN_DIR . 'templates/admin-page.php';
     }
 
+    /**
+     * Generates the composer.json content as a JSON string
+     * @return string Formatted JSON string
+     */
     public function get_active_plugins_composer_json() {
         $composer_data = [
             'name' => 'wordpress/composer-plugins',
@@ -95,6 +126,10 @@ class ComposerGenerator {
         return json_encode($composer_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
+    /**
+     * Gets all active plugin requirements for composer.json
+     * @return array Array of plugin requirements with versions
+     */
     private function get_plugin_requirements() {
         $requirements = [];
         $all_plugins = get_plugins();
@@ -113,6 +148,11 @@ class ComposerGenerator {
         return $requirements;
     }
 
+    /**
+     * Retrieves plugin information from WordPress.org API
+     * @param string $text_domain Plugin's text domain
+     * @return object|false Plugin information or false if not found
+     */
     private function get_plugin_info($text_domain) {
         require_once(ABSPATH . 'wp-admin/includes/plugin-install.php');
         
@@ -132,7 +172,7 @@ class ComposerGenerator {
     }
 }
 
-// Initialize the plugin
+// Initialize the plugin when WordPress loads
 function composer_generator_init() {
     ComposerGenerator::get_instance();
 }
